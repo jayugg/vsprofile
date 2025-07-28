@@ -5,7 +5,7 @@
 #include <chrono>
 #include <format>
 
-namespace vsprofile {
+namespace vsprofile::utils {
 
     inline std::string GetTimeStamp(){
         namespace ch = std::chrono;

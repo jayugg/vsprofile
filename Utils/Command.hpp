@@ -19,7 +19,7 @@ struct Command {
         std::cout << name << " — " << description << '\n';
     }
 
-    static std::vector<std::string> SplitArgs(const std::string& line) {
+    inline static std::vector<std::string> SplitArgs(const std::string& line) {
         std::istringstream iss(line);
         std::vector<std::string> tokens;
         std::string t;

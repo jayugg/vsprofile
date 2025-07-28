@@ -40,52 +40,27 @@ namespace vsprofile {
         out << j.dump(4);   // pretty‑print with indent
     }
 
-    // Required by json to serialise
+    // Required by JSON to serialise
     void to_json(json &j, const Config &c) {
         j = json{
                 {"vintagestoryDataPath", c.vintagestoryDataPath},
-                {"vintagestoryExePath",  c.vintagestoryExePath},
                 {"profilesPath",         c.profilesPath},
-                {"activeProfile",        c.activeProfile}
+                {"activeProfile",        c.activeProfile},
+                {"vintagestoryExePath",  c.vintagestoryExePath},
         };
     }
 
-    // Required by json to deserialise
+    // Required by JSON to deserialise
     void from_json(const json &j, Config &c) {
         c.vintagestoryDataPath = j.at("vintagestoryDataPath").get<fs::path>();
-        c.vintagestoryExePath = j.at("vintagestoryExePath").get<fs::path>();
         c.profilesPath = j.at("profilesPath").get<fs::path>();
         c.activeProfile = j.at("activeProfile").get<std::string>();
-    }
-
-     fs::path Config::GetConfigPath(const std::string &appName) {
-        const char *home = std::getenv("HOME");
-#ifdef _WIN32
-        const char* appdata = std::getenv("APPDATA");
-        if (appdata) {
-            return fs::path(appdata) / appName / "config.json";
-        } else if (home) {
-            return fs::path(home) / "AppData" / "Roaming" / appName / "config.json";
-        }
-#elif __APPLE__
-        if (home) {
-            return fs::path(home) / "Library" / "Application Support" / appName / "config.json";
-        }
-#else // Linux or other Unix-like
-        const char* xdg = std::getenv("XDG_CONFIG_HOME");
-        if (xdg) {
-            return fs::path(xdg) / appName / "config.json";
-        } else if (home) {
-            return fs::path(home) / ".config" / appName / "config.json";
-        }
-#endif
-        // Fallback: current directory
-        return "config.json";
+        c.vintagestoryExePath = j.at("vintagestoryExePath").get<fs::path>();
     }
 
     void Config::HandleCorruptConfig(const fs::path& configPath) {
-        std::string tempName = GetTimeStamp() + configPath.filename().string() + ".bak";
+        std::string tempName = utils::GetTimeStamp() + configPath.filename().string() + ".bak";
         fs::copy(configPath, configPath.parent_path() / tempName);
-        std::cout << std::format("Corrupt config file detected, backing up to {}", tempName);
+        std::cout << std::format("Corrupt Config file detected, backing up to {}", tempName);
     }
 }

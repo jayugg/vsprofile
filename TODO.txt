@@ -1,0 +1,37 @@
+Multi-option commands
+- update profile
+- clear all profiles
+- remove profile
+
+Better data structure:
+- profileconfig.json
+    - has profile data: active vs inactive profiles
+    - has profile list
+- .profilehistory
+    - contains old/broken profiles, storing everything (no uniqueness)
+
+Mod diagnostics tool:
+- implement delta debugging
+
+Lighten profile
+
+Commands:
+
+vsdatapath — Set Vintage Story data path
+vsexepath — Set Vintage Story executable path
+swap — Swap current mods with the given profile name.
+help — List available commands.
+list — List available profiles.
+save — Save a profile from the current mods folder.
+info — Show current configuration.
+mods — List current mods.
+
+activate <profile>: activates profile, backs up current mods with timestamp unless profile is active and is unchanged
+list: lists profiles
+remove <profile>: removes profile
+info <profile>: lists mods in profile
+mods: lists current mods
+save <name>: saves current mods folder as profile with name
+update <name>: updates contents of profile with name
+help: list commands
+status: displays info on config values, current active profile
