@@ -46,7 +46,10 @@ namespace vsprofile::utils {
     void ListDirectoryContents(const fs::path& path) {
         if (!vExistsDirectoryCheck(path)) { return; } // Ensure directory exists
         for (const auto& entry : fs::directory_iterator(path)) {
-            PrintLog(std::format("– {}\n",entry.path().filename().string()));
+            std::string name = entry.path().filename().string();
+            // Skip macOS metadata files
+            if (name == ".DS_Store") continue;
+            PrintLog(std::format("– {}\n", name));
         }
     }
 

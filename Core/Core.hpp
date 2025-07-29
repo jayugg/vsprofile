@@ -33,7 +33,7 @@ namespace vsprofile {
         void SaveProfile(const std::string& nameIn = "");
         void UpdateProfile(const std::string& name) const;
 
-        [[nodiscard]] static std::string GenNonEmptyName(std::string_view nameIn);
+        [[nodiscard]] std::string GenNonEmptyName(std::string_view nameIn) const;
     };
 
 }

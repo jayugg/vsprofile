@@ -9,9 +9,6 @@ namespace fs = std::filesystem;
 using namespace vsprofile;
 
 int main() {
-    std::ios::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-    std::cout.tie(nullptr);
     const Config config {Config::Load(constants::kConfigPath)};
     config.Save(constants::kConfigPath);
     Core core {Core(config)};
@@ -25,9 +22,11 @@ int main() {
 
         auto args = Command::SplitArgs(line);
         if (args.empty()) continue;
-        std::cout.flush();
+
+        // Quit program
+        if (args[0] == "quit" || args[0] == "exit" || args[0] == "q") break;
 
         core.Dispatch(args[0], args);
     }
-
+    std::cout << "Goodbye! :3";
 }

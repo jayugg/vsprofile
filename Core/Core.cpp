@@ -15,9 +15,9 @@ namespace vsprofile {
 
     Core::Core(Config config) : config_(std::move(config)) {}
 
-    std::string Core::GenNonEmptyName(std::string_view nameIn) {
+    std::string Core::GenNonEmptyName(const std::string_view nameIn) const{
         if (nameIn.empty()) {
-            return std::format("stash-{}", utils::GetTimeStamp());
+            return std::format("stash_{}_{}", utils::GetTimeStamp(), config_.activeProfile);
         }
         return std::string{nameIn};
     }
@@ -128,6 +128,7 @@ namespace vsprofile {
                 "profiles", "List available profiles.",
                 [this](const std::vector<std::string>&){
                     utl::PrintLog(utl::Bold("[Available profiles]\n"));
+                    fs::create_directories(config_.profilesPath);
                     utl::ListDirectoryContents(config_.profilesPath);
                 }
         });
