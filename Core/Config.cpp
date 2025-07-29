@@ -2,6 +2,11 @@
 // Created by Jacopo Uggeri on 27/07/2025.
 //
 #include "Config.hpp"
+#include "../Utils/TextUtils.hpp"
+#include "../Utils/TimeUtils.hpp"
+#include <fstream>
+
+namespace utl = vsprofile::utils;
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 
@@ -78,8 +83,8 @@ namespace vsprofile {
     }
 
     void Config::HandleCorruptConfig(const fs::path& configPath) {
-        std::string tempName {utils::GetTimeStamp() + configPath.filename().string() + ".bak"};
+        std::string tempName {utl::GetTimeStamp() + configPath.filename().string() + ".bak"};
         fs::copy(configPath, configPath.parent_path() / tempName);
-        utils::PrintLog(std::format("Corrupt Config file detected, backing up to {}", tempName));
+        utl::PrintLog(std::format("Corrupt Config file detected, backing up to {}", tempName));
     }
 }

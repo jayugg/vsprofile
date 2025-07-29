@@ -2,13 +2,12 @@
 // Created by Jacopo Uggeri on 28/07/2025.
 //
 #pragma once
-#include "TextUtils.hpp"
 #include <filesystem>
 #include <string>
 #include <format>
-#include <iostream>
 
 namespace vsprofile::utils {
+
     namespace fs = std::filesystem;
 
     // verbose checks

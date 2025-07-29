@@ -2,6 +2,7 @@
 // Created by Jacopo Uggeri on 28/07/2025.
 //
 #include "FileUtils.hpp"
+#include "TextUtils.hpp"
 
 namespace vsprofile::utils {
 

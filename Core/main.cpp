@@ -1,4 +1,4 @@
-#include "../Utils/Command.hpp"
+#include "Command.hpp"
 #include "../Include/json.hpp"
 #include "Config.hpp"
 #include "Core.hpp"
@@ -27,9 +27,7 @@ int main() {
         if (args.empty()) continue;
         std::cout.flush();
 
-        if (!core.Dispatch(args[0], args)) {
-            continue;
-        }
+        core.Dispatch(args[0], args);
     }
 
 }

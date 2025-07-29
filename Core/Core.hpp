@@ -3,29 +3,22 @@
 //
 #pragma once
 #include "../Include/json.hpp"
-#include "../Utils/TimeUtils.hpp"
-#include "../Utils/Command.hpp"
-#include "../Utils/AppConstants.hpp"
-#include "../Utils/FileUtils.hpp"
-#include "../Utils/TextUtils.hpp"
+#include "Command.hpp"
 #include "Config.hpp"
 #include <string>
 #include <vector>
-#include <filesystem>
-#include <iostream>
-#include <fstream>
 #include <format>
-#include <utility>
+
 using json = nlohmann::json;
 
 namespace vsprofile {
 
     class Core{
         std::unordered_map<std::string, Command> cmds_;
-        struct Config config_;
+        Config config_;
 
     public:
-        explicit Core(struct Config config);
+        explicit Core(Config config);
 
         void BuildCommands();
         [[nodiscard]] const auto& Commands() const { return cmds_; }
