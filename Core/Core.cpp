@@ -5,153 +5,176 @@
 
 namespace vsprofile {
 
-    Core::Core(struct Config  config) : Config(std::move(config)) {}
+    Core::Core(struct Config config) : config_(std::move(config)) {}
 
-    void Core::ListAllProfiles() const {
-        std::filesystem::create_directories(Config.profilesPath); // Ensure profiles path exists
-        for (const auto& entry : std::filesystem::directory_iterator(Config.profilesPath)) {
-            std::cout << std::format("•{}",entry.path().filename().string()) << '\n';
+    std::string Core::GenNonEmptyName(std::string_view nameIn) {
+        if (nameIn.empty()) {
+            return std::format("stash-{}", utils::GetTimeStamp());
         }
+        return std::string{nameIn};
     }
 
-    std::vector<std::string> Core::LoadAllProfiles() const {
-        std::vector<std::string> allProfiles;
-        for (const auto& entry : std::filesystem::directory_iterator(Config.profilesPath)) {
-            allProfiles.push_back(entry.path().filename().string());
-        }
-        return allProfiles;
-    }
 
-    std::string Core::GenNonEmptyName(const std::string& name_in) {
-        std::string name = name_in;
-        if (name_in.empty()) {
-            name = "snapshot-" + utils::GetTimeStamp();
-        }
-        return name;
-    }
-
-    void Core::SaveProfile(const std::string& name_in) const {
-        std::string name = GenNonEmptyName(name_in);
-        std::filesystem::create_directories(Config.profilesPath);
-        std::vector<std::string> profiles = LoadAllProfiles();
-        // Check if the profile already exists
-        for (const auto& profile : profiles) {
-            if (profile == name) {
-                std::cerr << "Profile with name '" << name << "' already exists." << '\n';
-                return;
-            }
-        }
-        // Check if the directory already exists
-        std::filesystem::path profilePath = Config.profilesPath / name;
+    void Core::SaveProfile(const std::string& nameIn) {
+        std::string name {GenNonEmptyName(nameIn)};
+        std::filesystem::create_directories(config_.profilesPath);
+        // Check if the profile directory exists
+        std::filesystem::path profilePath {config_.profilesPath / name};
         if (std::filesystem::exists(profilePath)) {
-            std::cerr << "Profile directory '" << profilePath.string() << "' already exists." << '\n';
+            utils::PrintErr(std::format("Profile directory '{}' already exists.\n", profilePath.string()));
+            utils::PrintErr(std::format("Use 'update {}' to update profile.\n", name));
             return;
         }
-
+        // Create profile directory
         std::filesystem::create_directories(profilePath);
-
         // Copy mods to the profile directory
-        for (const auto& entry : std::filesystem::directory_iterator(Config.modsPath)) {
-            if (entry.is_regular_file()) {
-                std::filesystem::copy(entry.path(), profilePath / entry.path().filename());
-            }
-        }
+        utils::CopyContents(config_.modsPath, profilePath);
+        // Activate the profile
+        config_.activeProfile = std::string(name);
+        utils::PrintLog(std::format("Saved profile {}\n", name));
     }
 
-    void Core::ListMods() const {
-        std::cout << "Currently loaded mods:" << '\n';
-        for (const auto& entry : std::filesystem::directory_iterator(Config.modsPath)) {
-            if (entry.is_regular_file()) {
-                std::cout << entry.path().filename() << '\n';
-            }
-        }
-    }
-
-    void Core::clearMods() const {
-        std::cout << "Clearing mods:" << '\n';
-        for (const auto& entry : std::filesystem::directory_iterator(Config.modsPath)) {
-            if (entry.is_regular_file()) {
-                std::cout << entry.path().filename() << '\n';
-                std::filesystem::remove(entry.path());
-            }
-        }
-    }
-
-    void Core::swapFolders(const std::string& profileName, std::string swappedName) const {
-        if (swappedName.empty())
-            swappedName = profileName + "_swapped_" + utils::GetTimeStamp();
-
-        if (std::filesystem::exists(Config.modsPath) && !std::filesystem::is_empty(Config.modsPath)) {
-            SaveProfile(swappedName);
-            clearMods();
-        }
-
-        std::filesystem::path profilePath = Config.profilesPath / profileName;
+    void Core::UpdateProfile(const std::string& name) const {
+        // Check that the profile exists
+        std::filesystem::path profilePath {config_.profilesPath / name};
         if (!std::filesystem::exists(profilePath)) {
-            throw std::invalid_argument("Could not find profile directory " + profilePath.string());
+            utils::PrintErr(std::format("Profile directory '{}' does not exist.\n", profilePath.string()));
+            utils::PrintErr( std::format("Use 'save {}' to save a new profile with this name.\n", name));
+            return;
         }
-
-        for (const auto& entry : std::filesystem::directory_iterator(profilePath)) {
-            if (entry.is_regular_file()) {
-                std::filesystem::copy(entry.path(), Config.modsPath / entry.path().filename());
-            }
-        }
+        // Clear profile path
+        utils::ClearDirectoryContents(profilePath);
+        // Copy mods to the profile directory
+        utils::CopyContents(config_.modsPath, profilePath);
+        utils::PrintLog(std::format("Updated profile {}\n", name));
     }
 
     void Core::SetActive(const std::string& profileName) {
-        Config.activeProfile = profileName;
+        config_.activeProfile = profileName;
+        if (profileName.empty()) {
+            utils::PrintLog("No active profile :£\n");
+        } else {
+            utils::PrintLog(std::format("Profile '{}' activated :3\n", profileName));
+        }
+        config_.Save(constants::kConfigPath);
     }
 
-    void Core::SwapProfiles(const std::string& profileName, const std::string& swappedName) {
-        swapFolders(profileName, swappedName);
-        SetActive(swappedName);
+    void Core::ActivateProfile(const std::string& profileName, const std::string& stashNameIn) {
+        if (profileName == config_.activeProfile) {
+            utils::PrintErr(std::format("Profile '{}' is already active!\n", profileName));
+            return;
+        }
+        std::string stashName {GenNonEmptyName(stashNameIn)};
+        // Ensure profile exists
+        std::filesystem::path profilePath {config_.profilesPath / profileName};
+        if (!std::filesystem::exists(profilePath)) {
+            utils::PrintErr(std::format("Profile directory '{}' does not exist.\n", profilePath.string()));
+            utils::PrintErr(std::format("Use 'save {}' to save a new profile with this name.\n", profileName));
+            return;
+        }
+        std::filesystem::path stashPath {config_.profilesPath / stashName};
+        if (std::filesystem::exists(stashPath)) {
+            utils::PrintErr(std::format("Stash directory '{}' already exists, retry with a different name.\n", stashName));
+            return;
+        }
+        utils::PrintLog(std::format("Activating profile '{}'\n", profileName));
+        std::filesystem::create_directories(stashPath); // Now both directories exist
+        // Copy contents of Mods into stashName
+        utils::PrintLog(std::format("Stashing current mods to profile '{}'\n", stashName));
+        utils::CopyContents(config_.modsPath, stashPath);
+        // Clear contents of Mods
+        utils::ClearDirectoryContents(config_.modsPath);
+        // Copy contents of profileName into Mods
+        utils::CopyContents(profilePath, config_.modsPath);
+        SetActive(profileName);
     }
 
     void Core::PrintInfo() const {
-        std::cout << std::format("{} v{}", constants::kAppName, constants::kAppVersion) << '\n';
-        std::cout << "Last active profile: " << (Config.activeProfile.empty() ? std::format("\033[3m{}\033[3m", "none") : Config.activeProfile) << '\n';\
-        std::cout << "Profiles path: " << Config.profilesPath << '\n';\
-        std::cout << "Mods path: " << Config.modsPath << '\n';\
+        std::cout << utils::Bold(std::format("[{} v{}] >.<\n", constants::kAppName, constants::kAppVersion));
+        const std::string shown = config_.activeProfile.empty() ? utils::Italics("none") : config_.activeProfile;
+        std::cout << std::format("Last active profile: '{}'\n", shown);
+        std::cout << std::format("Profiles path: '{}'\n", utils::Italics(config_.profilesPath.string()));
+        std::cout << std::format("Mods path: '{}'\n",      utils::Italics(config_.modsPath.string()));
     }
 
     void Core::PrintExtraInfo() const {
-        std::cout << "VintagestoryData folder path: " << Config.vintagestoryDataPath << '\n';
-        std::cout << "Vintage Story executable path: " << Config.vintagestoryExePath << '\n';\
-        std::cout << "Config path: " << constants::kConfigPath << '\n';
+        std::cout << std::format("VintagestoryData folder path: '{}'\n", utils::Italics(config_.vintagestoryDataPath.string()));
+        std::cout << std::format("Vintage Story executable path: '{}'\n", utils::Italics(config_.vintagestoryExePath.string()));
+        std::cout << std::format("Config path: '{}'\n", utils::Italics(constants::kConfigPath.string()));
+    }
+
+    void Core::ClearAllProfiles() {
+        std::string line;
+        while (true) {
+            utils::PrintWarn("This will clear all profile folders, do you wish to continue? y/n\n");
+            std::cout << utils::Blink(">> ");
+            if (!std::getline(std::cin, line)) break;
+            if (line[0] != 'y') {
+                utils::PrintErr("Process aborted.\n");
+                return;
+            } else {
+                break;
+            }
+        }
+        utils::PrintLog(utils::Bold("Clearing All Profiles...\n"));
+        utils::ClearDirectoryContents(config_.profilesPath, true);
+        utils::PrintLog(utils::Bold("Cleared All Profiles! :3\n"));
+        SetActive("");
     }
 
     void Core::BuildCommands() {
         cmds_.clear();
 
-        cmds_.emplace("list", Command{
-                "list", "List available profiles.",
-                [this](const std::vector<std::string>&){ this->ListAllProfiles(); }
+        cmds_.emplace("profiles", Command{
+                "profiles", "List available profiles.",
+                [this](const std::vector<std::string>&){
+                    utils::PrintLog(utils::Bold("[Available profiles]\n"));
+                    utils::ListDirectoryContents(config_.profilesPath);
+                }
         });
 
         cmds_.emplace("mods", Command{
                 "mods", "List current mods.",
-                [this](const std::vector<std::string>&){ this->ListMods(); }
+                [this](const std::vector<std::string>&){
+                    utils::PrintLog(utils::Bold("[Installed mods]\n"));
+                    utils::ListDirectoryContents(config_.modsPath);
+                }
         });
 
         cmds_.emplace("save", Command{
                 "save", "Save a profile from the current mods folder.",
                 [this](const std::vector<std::string>& args){
-                    if (args.size() < 2) { std::cerr << "usage: save <name>\n"; return; }
+                    if (args.size() < 2) { utils::PrintErr("usage: save <name>\n"); return; }
                     this->SaveProfile(args[1]);
                 }
         });
 
-        cmds_.emplace("swap", Command{
-                "swap", "Swap current mods with the given profile name.",
+        cmds_.emplace("update", Command{
+                "update", "Update a profile from the current mods folder.",
                 [this](const std::vector<std::string>& args){
-                    if (args.size() < 2) { std::cerr << "usage: swap <profile> <swapped>\n"; return; }
-                    this->SwapProfiles(args[1], args[2]);
+                    if (args.size() < 2) { utils::PrintErr("usage: update <name>\n"); return; }
+                    this->UpdateProfile(args[1]);
+                }
+        });
+
+        cmds_.emplace("activate", Command{
+                "activate", "Move mods contained in the given profile name in the Mods folder. Stashes current mod list.",
+                [this](const std::vector<std::string>& args){
+                    if (args.size() < 2) { utils::PrintErr("usage: activate <profile>\n"); return; }
+                    this->ActivateProfile(args[1], args[2]);
                 }
         });
 
         cmds_.emplace("info", Command{
-                "info", "Show current configuration.",
+                "info", "Show extra information on the current configuration.",
                 [this](const std::vector<std::string>&){ this->PrintExtraInfo(); }
+        });
+
+        cmds_.emplace("clearall", Command{
+                "clearall", "Clear all existing profiles.",
+                [this](const std::vector<std::string>&){
+                    this->ClearAllProfiles();
+                }
         });
 
         cmds_.emplace("help", Command{
@@ -160,23 +183,18 @@ namespace vsprofile {
                     for (auto& [_, cmd] : this->cmds_) cmd.PrintDescription();
                 }
         });
-
-        cmds_.emplace("vsexepath", Command{
-                "vsexepath", "Set Vintage Story executable path",
-                [this](const std::vector<std::string>& args){ this->Config.vintagestoryExePath = args[1]; }
-        });
-
-        cmds_.emplace("vsdatapath", Command{
-                "vsdatapath", "Set Vintage Story data path",
-                [this](const std::vector<std::string>& args){ this->Config.vintagestoryDataPath = args[1]; }
-        });
     }
 
     bool Core::Dispatch(const std::string& cmd, const std::vector<std::string>& args) {
+        if (cmds_.empty()) {
+            utils::PrintErr("No commands loaded. Did you forget to call BuildCommands?.\n");
+        }
         auto it = cmds_.find(cmd);
-        if (it == cmds_.end()) { std::cerr << "Unknown command. Try 'help'.\n"; return false; }
+        if (it == cmds_.end()) {
+            utils::PrintErr("Unknown command. Try 'help'.\n");
+            return false;
+        }
         it->second.run(args);
-        Config.Save(constants::kConfigPath);
         return true;
     }
 

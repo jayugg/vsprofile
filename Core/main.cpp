@@ -9,20 +9,23 @@ namespace fs = std::filesystem;
 using namespace vsprofile;
 
 int main() {
-    const Config config = Config::Load(constants::kConfigPath);
+    std::ios::sync_with_stdio(false);
+    std::cin.tie(nullptr);
+    std::cout.tie(nullptr);
+    const Config config {Config::Load(constants::kConfigPath)};
     config.Save(constants::kConfigPath);
-    Core core = Core(config);
+    Core core {Core(config)};
     core.BuildCommands();
-    std::unordered_map<std::string, Command> cmds = core.Commands();
 
     std::string line;
     while (true) {
         core.PrintInfo();
-        std::cout << "> ";
+        std::cout << "> " << std::flush;
         if (!std::getline(std::cin, line)) break;
 
         auto args = Command::SplitArgs(line);
         if (args.empty()) continue;
+        std::cout.flush();
 
         if (!core.Dispatch(args[0], args)) {
             continue;

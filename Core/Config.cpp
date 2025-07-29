@@ -4,6 +4,7 @@
 #include "Config.hpp"
 namespace fs = std::filesystem;
 using json = nlohmann::json;
+
 namespace vsprofile {
 
     Config Config::Load(const fs::path& configPath) {
@@ -33,11 +34,29 @@ namespace vsprofile {
         return cfg;
     }
 
-    void Config::Save(const fs::path& configPath) const {
-        fs::create_directories(configPath.parent_path());
-        std::ofstream out{configPath};
-        json j = *this;
-        out << j.dump(4);   // pretty‑print with indent
+    void Config::Save(const fs::path& path) const {
+        fs::create_directories(path.parent_path());
+        const fs::path tmp = path.string() + ".tmp";
+        // Save to a temporary file
+        {
+            std::ofstream out(tmp, std::ios::binary | std::ios::trunc);
+            if (!out) throw std::runtime_error(std::format("open '{}' failed", tmp.string()));
+            out << json(*this).dump(4) << '\n';
+            out.flush();
+            if (!out) throw std::runtime_error(std::format("write '{}' failed", tmp.string()));
+        }
+        // replace target (rename, else remove+rename, else copy)
+        std::error_code ec;
+        fs::rename(tmp, path, ec);
+        if (ec) {
+            fs::remove(path, ec); ec.clear();
+            fs::rename(tmp, path, ec);
+            if (ec) {
+                fs::copy_file(tmp, path, fs::copy_options::overwrite_existing, ec);
+                fs::remove(tmp);
+                if (ec) throw std::runtime_error(std::format("Failed replacing '{}': {}", path.string(), ec.message()));
+            }
+        }
     }
 
     // Required by JSON to serialise
@@ -59,8 +78,8 @@ namespace vsprofile {
     }
 
     void Config::HandleCorruptConfig(const fs::path& configPath) {
-        std::string tempName = utils::GetTimeStamp() + configPath.filename().string() + ".bak";
+        std::string tempName {utils::GetTimeStamp() + configPath.filename().string() + ".bak"};
         fs::copy(configPath, configPath.parent_path() / tempName);
-        std::cout << std::format("Corrupt Config file detected, backing up to {}", tempName);
+        utils::PrintLog(std::format("Corrupt Config file detected, backing up to {}", tempName));
     }
 }

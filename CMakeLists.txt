@@ -9,4 +9,5 @@ add_executable(vsprofile
         Core/main.cpp
         Core/Config.cpp
         Core/Core.cpp
+        Utils/FileUtils.cpp
 )

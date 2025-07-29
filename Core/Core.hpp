@@ -6,6 +6,8 @@
 #include "../Utils/TimeUtils.hpp"
 #include "../Utils/Command.hpp"
 #include "../Utils/AppConstants.hpp"
+#include "../Utils/FileUtils.hpp"
+#include "../Utils/TextUtils.hpp"
 #include "Config.hpp"
 #include <string>
 #include <vector>
@@ -19,32 +21,26 @@ using json = nlohmann::json;
 namespace vsprofile {
 
     class Core{
+        std::unordered_map<std::string, Command> cmds_;
+        struct Config config_;
 
     public:
-        explicit Core(struct Config  config);
+        explicit Core(struct Config config);
 
-        void BuildCommands();              // populate cmds_
+        void BuildCommands();
         [[nodiscard]] const auto& Commands() const { return cmds_; }
         bool Dispatch(const std::string& cmd, const std::vector<std::string>& args);
 
         void SetActive(const std::string& profileName);
-        void SwapProfiles(const std::string& profileName, const std::string& swappedName = {});
+        void ActivateProfile(const std::string& profileName, const std::string& stashName = "");
+        void ClearAllProfiles();
 
-        void ListAllProfiles() const;
-        void ListMods() const;
         void PrintInfo() const;
         void PrintExtraInfo() const;
-        void SaveProfile(const std::string& name_in = "") const;
-        [[nodiscard]] std::vector<std::string> LoadAllProfiles() const;
+        void SaveProfile(const std::string& nameIn = "");
+        void UpdateProfile(const std::string& name) const;
 
-        static std::string GenNonEmptyName(const std::string& name_in);
-
-        struct Config Config;
-    private:
-        std::unordered_map<std::string, Command> cmds_;
-
-        void swapFolders(const std::string& profileName, std::string swappedName = {}) const;
-        void clearMods() const;
+        [[nodiscard]] static std::string GenNonEmptyName(std::string_view nameIn);
     };
 
 }
